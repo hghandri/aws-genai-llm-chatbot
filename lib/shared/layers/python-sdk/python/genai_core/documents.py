@@ -31,6 +31,8 @@ RSS_FEED_INGESTOR_FUNCTION = os.environ.get("RSS_FEED_INGESTOR_FUNCTION", "")
 RSS_FEED_SCHEDULE_ROLE_ARN = os.environ.get("RSS_FEED_SCHEDULE_ROLE_ARN", "")
 DOCUMENTS_BY_STATUS_INDEX = os.environ.get("DOCUMENTS_BY_STATUS_INDEX", "")
 
+DELETE_DOCUMENT_WORKFLOW_ARN = os.environ.get("DELETE_DOCUMENT_WORKFLOW_ARN", "")
+
 WORKSPACE_OBJECT_TYPE = "workspace"
 
 s3 = boto3.resource("s3")
@@ -378,6 +380,28 @@ def update_document(workspace_id: str, document_id: str, document_type: str, **k
     else:
         return f"Error! Document Type {document_type} doesn't have any update options"
 
+
+def delete_document(workspace_id: str, document_id: str):
+    response = documents_table.get_item(
+        Key={"workspace_id": workspace_id, "document_id": document_id}
+    )
+
+    item = response.get("Item")
+
+    if not item:
+        raise genai_core.types.CommonError("Document not found")
+
+    response = sfn_client.start_execution(
+        stateMachineArn=DELETE_DOCUMENT_WORKFLOW_ARN,
+        input=json.dumps(
+            {
+                "workspace_id": workspace_id,
+                "document_id": document_id,
+            }
+        ),
+    )
+
+    print(response)
 
 def _get_timestamp():
     return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")

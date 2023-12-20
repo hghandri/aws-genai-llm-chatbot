@@ -76,6 +76,8 @@ export class RestApi extends Construct {
             ?.attrEndpointName ?? "",
         DELETE_WORKSPACE_WORKFLOW_ARN:
           props.ragEngines?.deleteWorkspaceWorkflow?.stateMachineArn ?? "",
+        DELETE_DOCUMENT_WORKFLOW_ARN:
+            props.ragEngines?.deleteDocumentWorkflow?.stateMachineArn ?? "",
         CREATE_AURORA_WORKSPACE_WORKFLOW_ARN:
           props.ragEngines?.auroraPgVector?.createAuroraWorkspaceWorkflow
             ?.stateMachineArn ?? "",
@@ -212,6 +214,10 @@ export class RestApi extends Construct {
 
     if (props.ragEngines?.deleteWorkspaceWorkflow) {
       props.ragEngines.deleteWorkspaceWorkflow.grantStartExecution(apiHandler);
+    }
+
+    if (props.ragEngines?.deleteDocumentWorkflow) {
+      props.ragEngines.deleteDocumentWorkflow.grantStartExecution(apiHandler);
     }
 
     if (props.ragEngines?.sageMakerRagModels) {
