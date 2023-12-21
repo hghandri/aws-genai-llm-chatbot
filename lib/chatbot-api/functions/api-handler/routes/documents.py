@@ -2,6 +2,7 @@ import os
 import genai_core.types
 import genai_core.upload
 import genai_core.documents
+import genai_core.workspaces
 from pydantic import BaseModel
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler.api_gateway import Router
@@ -163,6 +164,11 @@ def disable_document(workspace_id: str, document_id: str):
         }
     }
 
+@router.delete("/workspaces/<workspace_id>/documents/<document_id>")
+@tracer.capture_method
+def delete_document(workspace_id: str, document_id: str):
+  genai_core.documents.delete_document(workspace_id, document_id)
+  return {"ok": True}
 
 @router.post("/workspaces/<workspace_id>/documents/<document_type>")
 @tracer.capture_method

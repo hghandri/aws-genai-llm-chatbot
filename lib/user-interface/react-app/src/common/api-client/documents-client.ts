@@ -76,6 +76,27 @@ export class DocumentsClient extends ApiClientBase {
     }
   }
 
+  async deleteDocument(
+      workspaceId: string,
+      documentId: string
+  ): Promise<ApiResult<null>> {
+    try {
+      const headers = await this.getHeaders();
+      const result = await fetch(
+          this.getApiUrl(
+              `/workspaces/${workspaceId}/documents/${documentId}`
+          ),
+          {
+            method: "DELETE",
+            headers,
+          }
+      );
+      return result.json();
+    } catch (error) {
+      return this.error(error);
+    }
+  }
+
   async addTextDocument(
     workspaceId: string,
     title: string,
