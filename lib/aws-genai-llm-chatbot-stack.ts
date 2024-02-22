@@ -29,7 +29,7 @@ export class AwsGenAILLMChatbotStack extends cdk.Stack {
     });
 
     const shared = new Shared(this, "Shared", { config: props.config });
-    const authentication = new Authentication(this, "Authentication");
+    const authentication = new Authentication(this, "Authentication", { config: props.config });
     const models = new Models(this, "Models", {
       config: props.config,
       shared,
@@ -415,7 +415,7 @@ export class AwsGenAILLMChatbotStack extends cdk.Stack {
         reason: "Not yet upgraded from Python 3.11 to 3.12.",
       },
     ]);
-    
+
     if (props.config.privateWebsite) {
       const paths = [];
       for(let index = 0; index < shared.vpc.availabilityZones.length; index++) {
@@ -446,7 +446,7 @@ export class AwsGenAILLMChatbotStack extends cdk.Stack {
             },
           ]
       );
-      
+
     }
   }
 }

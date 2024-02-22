@@ -140,6 +140,7 @@ export default function AppConfigured() {
         colorMode={theme === Mode.Dark ? "dark" : "light"}
       >
         <Authenticator
+          socialProviders={config.oauth?.social_provider_allowed ?? []}
           hideSignUp={true}
           components={{
             SignIn: {

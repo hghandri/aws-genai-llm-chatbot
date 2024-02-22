@@ -1,4 +1,5 @@
 import * as sagemaker from "aws-cdk-lib/aws-sagemaker";
+import {UserPoolIdentityProviderGoogleProps} from "aws-cdk-lib/aws-cognito";
 
 export type ModelProvider = "sagemaker" | "bedrock" | "openai";
 
@@ -42,7 +43,7 @@ export enum SupportedRegion {
   US_WEST_1 = "us-west-1",
   US_WEST_2 = "us-west-2",
 }
-    
+
 export enum SupportedBedrockRegion {
   AP_NORTHEAST_1 = "ap-northeast-1",
   AP_SOUTHEAST_1 = "ap-southeast-1",
@@ -118,6 +119,19 @@ export interface SystemConfig {
       default?: boolean;
     }[];
   };
+  oauth?: {
+    domain: string;
+    redirectSignIn: string[];
+    redirectSignOut: string[];
+    scopes: [];
+    responseType: string
+    social_provider: {
+      Google: {
+        secretArn: string;
+        config: UserPoolIdentityProviderGoogleProps;
+      }
+    }
+  }
 }
 
 export interface SageMakerLLMEndpoint {

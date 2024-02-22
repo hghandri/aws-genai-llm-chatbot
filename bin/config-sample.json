@@ -1,0 +1,81 @@
+{
+  "prefix": "test",
+  "vpc": {
+     "vpcId": "vpc-0148b1c6aa6025710",
+     "createVpcEndpoints": false
+   },
+  "bedrock": {
+    "enabled": true,
+    "region": "us-west-2",
+    "endpointUrl": "https://bedrock-runtime.us-west-2.amazonaws.com"
+  },
+  "llms": {
+    "sagemaker": []
+  },
+  "rag": {
+    "enabled": true,
+    "engines": {
+      "aurora": {
+        "enabled": true
+      },
+      "opensearch": {
+        "enabled": false
+      },
+      "kendra": {
+        "enabled": false,
+        "createIndex": false,
+        "external": []
+      }
+    },
+    "embeddingsModels": [
+      {
+        "provider": "sagemaker",
+        "name": "intfloat/multilingual-e5-large",
+        "dimensions": 1024,
+        "default": true
+      },
+      {
+        "provider": "sagemaker",
+        "name": "sentence-transformers/all-MiniLM-L6-v2",
+        "dimensions": 384
+      },
+      {
+        "provider": "bedrock",
+        "name": "amazon.titan-embed-text-v1",
+        "dimensions": 1536
+      },
+      {
+        "provider": "openai",
+        "name": "text-embedding-ada-002",
+        "dimensions": 1536
+      }
+    ],
+    "crossEncoderModels": [
+      {
+        "provider": "sagemaker",
+        "name": "cross-encoder/ms-marco-MiniLM-L-12-v2",
+        "default": true
+      }
+    ]
+  },
+  "oauth": {
+    "domain": "PREFIX_COGNITO_DOMAIN_NAME",
+    "redirectSignIn": ["https://CUSTOM_DOMAIN_NAME_OR_CLOUDFRONT_DOMAIN_NAME/"],
+    "redirectSignOut": ["https://CUSTOM_DOMAIN_NAME_OR_CLOUDFRONT_DOMAIN_NAME/"],
+    "scopes": [
+      "email",
+      "openid",
+      "profile",
+      "aws.cognito.signin.user.admin"
+    ],
+    "responseType": "code",
+    "social_provider": {
+      "Google": {
+        "secretArn": "SECRET_ARN_CONTAINS_API_KEY_FOR_SOCIAL_LOGIN",
+        "config": {
+          "scopes": ["email", "openid", "profile"]
+        }
+      }
+    }
+  }
+}

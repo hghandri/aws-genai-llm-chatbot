@@ -29,6 +29,14 @@ export interface AppConfig {
       region: string;
     };
   };
+  oauth?: {
+    domain: string;
+    redirectSignIn: string;
+    redirectSignOut: string;
+    scopes: [];
+    responseType: string;
+    social_provider_allowed: [];
+  }
 }
 
 export interface NavigationPanelState {

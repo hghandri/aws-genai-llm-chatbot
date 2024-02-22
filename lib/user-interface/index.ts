@@ -48,18 +48,18 @@ export class UserInterface extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       autoDeleteObjects: true,
-      bucketName: props.config.privateWebsite ? props.config.domain : undefined, 
+      bucketName: props.config.privateWebsite ? props.config.domain : undefined,
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "index.html",
       enforceSSL: true,
       serverAccessLogsBucket: uploadLogsBucket,
     });
-    
+
     // Deploy either Private (only accessible within VPC) or Public facing website
     let apiEndpoint: string;
     let websocketEndpoint: string;
     let distribution;
-    
+
     if (props.config.privateWebsite) {
       const privateWebsite = new PrivateWebsite(this, "PrivateWebsite", {...props, websiteBucket: websiteBucket });
     } else {
@@ -67,7 +67,7 @@ export class UserInterface extends Construct {
       distribution = publicWebsite.distribution
     }
 
-      
+
 
     const exportsAsset = s3deploy.Source.jsonData("aws-exports.json", {
       aws_project_region: cdk.Aws.REGION,
@@ -101,6 +101,14 @@ export class UserInterface extends Construct {
         ),
         privateWebsite: props.config.privateWebsite ? true : false,
       },
+      oauth: {
+        domain: props.config.oauth?.domain + `.auth.${cdk.Aws.REGION}.amazoncognito.com`,
+        redirectSignIn: props.config.oauth?.redirectSignIn[0] ?? '',
+        redirectSignOut: props.config.oauth?.redirectSignOut,
+        scopes: props.config.oauth?.scopes,
+        responseType: "code",
+        social_provider_allowed: Object.keys(props.config.oauth?.social_provider || []).map(elmt => { return elmt.toLowerCase() })
+      }
     });
 
     // Allow authenticated web users to read upload data to the attachments bucket for their chat files
@@ -201,12 +209,12 @@ export class UserInterface extends Construct {
       distribution: props.config.privateWebsite ? undefined : distribution
     });
 
-   
+
     /**
      * CDK NAG suppression
      */
     NagSuppressions.addResourceSuppressions(
-      uploadLogsBucket, 
+      uploadLogsBucket,
       [
         {
           id: "AwsSolutions-S1",

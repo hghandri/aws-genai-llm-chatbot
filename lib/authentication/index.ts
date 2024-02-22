@@ -3,13 +3,20 @@ import * as cdk from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { NagSuppressions } from "cdk-nag";
+import {SystemConfig} from "../shared/types";
+import {IdpLoader} from "./idpLoader";
+import {IdpInterface} from "./idp/idp-interface";
+
+export interface AuthenticationProps {
+  readonly config: SystemConfig;
+}
 
 export class Authentication extends Construct {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly identityPool: cognitoIdentityPool.IdentityPool;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: AuthenticationProps) {
     super(scope, id);
 
     const userPool = new cognito.UserPool(this, "UserPool", {
@@ -23,6 +30,14 @@ export class Authentication extends Construct {
       },
     });
 
+    if(props.config.oauth?.domain){
+      userPool.addDomain('UserPoolDomain', {
+        cognitoDomain: {
+          domainPrefix: props.config.oauth.domain
+        }
+      })
+    }
+
     const userPoolClient = userPool.addClient("UserPoolClient", {
       generateSecret: false,
       authFlows: {
@@ -30,7 +45,46 @@ export class Authentication extends Construct {
         userPassword: true,
         userSrp: true,
       },
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true
+        },
+        scopes: [
+          cognito.OAuthScope.EMAIL,
+          cognito.OAuthScope.PROFILE,
+          cognito.OAuthScope.OPENID,
+          cognito.OAuthScope.COGNITO_ADMIN
+        ],
+        callbackUrls: props.config.oauth?.redirectSignIn,
+        logoutUrls: props.config.oauth?.redirectSignOut
+      },
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        cognito.UserPoolClientIdentityProvider.GOOGLE
+      ]
     });
+
+    if(props.config.oauth?.social_provider){
+
+      const idpLoader = new IdpLoader(this, 'IdpLoader');
+      let idp: IdpInterface;
+
+      for (const [providerName, providerConfig] of Object.entries(props.config.oauth?.social_provider)) {
+
+        void (async () => {
+          idp = await idpLoader.get(providerName)
+          idp.add({
+            userPool: userPool,
+            secretCompleteArn: providerConfig.secretArn,
+            IdentityProviderProps: providerConfig.config
+          })
+
+          // Make sure the user pool client is created after the IDP
+          userPoolClient.node.addDependency(idp);
+
+        })()
+      }
+    }
 
     const identityPool = new cognitoIdentityPool.IdentityPool(
       this,
