@@ -38,6 +38,10 @@ export class Authentication extends Construct {
       })
     }
 
+    const supportedIdentityProviders = [
+      cognito.UserPoolClientIdentityProvider.COGNITO
+    ]
+
     const userPoolClient = userPool.addClient("UserPoolClient", {
       generateSecret: false,
       authFlows: {
@@ -58,10 +62,7 @@ export class Authentication extends Construct {
         callbackUrls: props.config.oauth?.redirectSignIn,
         logoutUrls: props.config.oauth?.redirectSignOut
       },
-      supportedIdentityProviders: [
-        cognito.UserPoolClientIdentityProvider.COGNITO,
-        cognito.UserPoolClientIdentityProvider.GOOGLE
-      ]
+      supportedIdentityProviders: supportedIdentityProviders
     });
 
     if(props.config.oauth?.social_provider){

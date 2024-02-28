@@ -4,7 +4,7 @@ import {IdpInterface} from "./idp/idp-interface";
 export class IdpLoader extends Construct {
 
     availableIdp: IdpInterface[]
-    idpSupports = ['Google', 'Facebook', 'Amazon', 'Apple']
+    idpSupports = ['Google', 'Facebook', 'Amazon', 'Apple', 'Okta']
 
     constructor(scope: Construct, id: string) {
         super(scope, id);

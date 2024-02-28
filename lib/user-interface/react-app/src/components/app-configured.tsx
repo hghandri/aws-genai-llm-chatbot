@@ -28,7 +28,7 @@ export default function AppConfigured() {
         const result = await fetch("/aws-exports.json");
         const awsExports = await result.json();
         const currentConfig = Amplify.configure(awsExports) as AppConfig | null;
-
+        console.log(currentConfig)
         if (currentConfig?.config.auth_federated_provider?.auto_redirect) {
           let authenticated = false;
           try {
@@ -41,9 +41,10 @@ export default function AppConfigured() {
           }
 
           if (!authenticated) {
+            console.log('Not authenticated')
             const federatedProvider =
               currentConfig.config.auth_federated_provider;
-
+            console.log(federatedProvider)
             if (!federatedProvider.custom) {
               Auth.federatedSignIn({ provider: federatedProvider.name });
             } else {

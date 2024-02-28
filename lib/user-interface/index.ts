@@ -100,6 +100,11 @@ export class UserInterface extends Construct {
           props.config
         ),
         privateWebsite: props.config.privateWebsite ? true : false,
+        auth_federated_provider: {
+          auto_redirect: true,
+          name: "testGenAIChatBotOktaokta96839494",
+          custom: true
+        }
       },
       oauth: {
         domain: props.config.oauth?.domain + `.auth.${cdk.Aws.REGION}.amazoncognito.com`,
