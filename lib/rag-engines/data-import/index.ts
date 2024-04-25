@@ -22,6 +22,8 @@ import * as s3Notifications from "aws-cdk-lib/aws-s3-notifications";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import { NagSuppressions } from "cdk-nag";
+import { WebCrawlerBatchJob } from "./web-crawler-batch-job";
 
 export interface DataImportProps {
   readonly config: SystemConfig;
@@ -47,20 +49,29 @@ export class DataImport extends Construct {
   constructor(scope: Construct, id: string, props: DataImportProps) {
     super(scope, id);
 
-    const ingestionDealLetterQueue = new sqs.Queue(
+    const ingestionDeadLetterQueue = new sqs.Queue(
       this,
       "IngestionDeadLetterQueue",
       {
         visibilityTimeout: cdk.Duration.seconds(900),
+        enforceSSL: true,
       }
     );
 
     const ingestionQueue = new sqs.Queue(this, "IngestionQueue", {
       visibilityTimeout: cdk.Duration.seconds(900),
+      enforceSSL: true,
       deadLetterQueue: {
-        queue: ingestionDealLetterQueue,
+        queue: ingestionDeadLetterQueue,
         maxReceiveCount: 3,
       },
+    });
+
+    const uploadLogsBucket = new s3.Bucket(this, "UploadLogsBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      enforceSSL: true,
     });
 
     const uploadBucket = new s3.Bucket(this, "UploadBucket", {
@@ -68,6 +79,8 @@ export class DataImport extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       transferAcceleration: true,
+      enforceSSL: true,
+      serverAccessLogsBucket: uploadLogsBucket,
       cors: [
         {
           allowedHeaders: ["*"],
@@ -84,10 +97,19 @@ export class DataImport extends Construct {
       ],
     });
 
+    const processingLogsBucket = new s3.Bucket(this, "ProcessingLogsBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      enforceSSL: true,
+    });
+
     const processingBucket = new s3.Bucket(this, "ProcessingBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      enforceSSL: true,
+      serverAccessLogsBucket: processingLogsBucket,
     });
 
     uploadBucket.addEventNotification(
@@ -126,17 +148,29 @@ export class DataImport extends Construct {
       }
     );
 
+    const webCrawlerBatchJob = new WebCrawlerBatchJob(
+      this,
+      "WebCrawlerBatchJob",
+      {
+        shared: props.shared,
+        config: props.config,
+        uploadBucket,
+        processingBucket,
+        auroraDatabase: props.auroraDatabase,
+        ragDynamoDBTables: props.ragDynamoDBTables,
+        sageMakerRagModelsEndpoint: props.sageMakerRagModels?.model.endpoint,
+        openSearchVector: props.openSearchVector,
+      }
+    );
+
     const websiteCrawlingWorkflow = new WebsiteCrawlingWorkflow(
       this,
       "WebsiteCrawlingWorkflow",
       {
         shared: props.shared,
         config: props.config,
-        processingBucket,
-        auroraDatabase: props.auroraDatabase,
+        webCrawlerBatchJob,
         ragDynamoDBTables: props.ragDynamoDBTables,
-        sageMakerRagModelsEndpoint: props.sageMakerRagModels?.model.endpoint,
-        openSearchVector: props.openSearchVector,
       }
     );
 
@@ -215,5 +249,18 @@ export class DataImport extends Construct {
     this.fileImportWorkflow = fileImportWorkflow.stateMachine;
     this.websiteCrawlingWorkflow = websiteCrawlingWorkflow.stateMachine;
     this.rssIngestorFunction = rssSubscription.rssIngestorFunction;
+
+    /**
+     * CDK NAG suppression
+     */
+    NagSuppressions.addResourceSuppressions(
+      [uploadLogsBucket, processingLogsBucket],
+      [
+        {
+          id: "AwsSolutions-S1",
+          reason: "Logging bucket does not require it's own access logs.",
+        },
+      ]
+    );
   }
 }

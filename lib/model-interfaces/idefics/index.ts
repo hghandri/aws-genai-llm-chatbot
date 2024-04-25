@@ -14,6 +14,8 @@ import { Construct } from "constructs";
 import * as path from "path";
 import { Shared } from "../../shared";
 import { SystemConfig } from "../../shared/types";
+import { RemovalPolicy } from "aws-cdk-lib";
+import { NagSuppressions } from "cdk-nag";
 
 interface IdeficsInterfaceProps {
   readonly shared: Shared;
@@ -52,10 +54,24 @@ export class IdeficsInterface extends Construct {
       }
     );
 
+    const logGroup = new logs.LogGroup(
+      this,
+      "ChatbotFilesPrivateApiAccessLogs",
+      {
+        removalPolicy: RemovalPolicy.DESTROY,
+      }
+    );
+
     const api = new apigateway.RestApi(this, "ChatbotFilesPrivateApi", {
       deployOptions: {
         stageName: "prod",
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        tracingEnabled: true,
+        metricsEnabled: true,
+        accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
+        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
       },
+      cloudWatchRole: true,
       binaryMediaTypes: ["*/*"],
       endpointConfiguration: {
         types: [apigateway.EndpointType.PRIVATE],
@@ -84,6 +100,12 @@ export class IdeficsInterface extends Construct {
       }),
     });
 
+    api.addRequestValidator("ValidateRequest", {
+      requestValidatorName: "chatbot-files-private-api-validator",
+      validateRequestBody: true,
+      validateRequestParameters: true,
+    });
+
     // Create an API Gateway resource that proxies to the S3 bucket:
     const integrationRole = new iam.Role(this, "S3IntegrationRole", {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
@@ -107,7 +129,7 @@ export class IdeficsInterface extends Construct {
       new iam.PolicyStatement({
         actions: ["kms:Decrypt", "kms:ReEncryptFrom"],
         effect: iam.Effect.ALLOW,
-        resources: ["*"],
+        resources: ["arn:aws:kms:*"],
       })
     );
 
@@ -181,12 +203,22 @@ export class IdeficsInterface extends Construct {
     props.sessionsTable.grantReadWriteData(requestHandler);
     props.messagesTopic.grantPublish(requestHandler);
     props.shared.configParameter.grantRead(requestHandler);
+    requestHandler.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["bedrock:InvokeModel"],
+        resources: ["*"],
+        effect: iam.Effect.ALLOW,
+      })
+    );
 
-    const deadLetterQueue = new sqs.Queue(this, "DLQ");
+    const deadLetterQueue = new sqs.Queue(this, "DLQ", {
+      enforceSSL: true,
+    });
     const queue = new sqs.Queue(this, "Queue", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       // https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
       visibilityTimeout: cdk.Duration.minutes(lambdaDurationInMinutes * 6),
+      enforceSSL: true,
       deadLetterQueue: {
         queue: deadLetterQueue,
         maxReceiveCount: 3,
@@ -208,6 +240,18 @@ export class IdeficsInterface extends Construct {
 
     this.ingestionQueue = queue;
     this.requestHandler = requestHandler;
+
+    /**
+     * CDK NAG suppression
+     */
+    NagSuppressions.addResourceSuppressions(integrationRole, [
+      {
+        id: "AwsSolutions-IAM4",
+        reason:
+          "Access to all log groups required for CloudWatch log group creation.",
+      },
+      { id: "AwsSolutions-IAM5", reason: "Access limited to KMS resources." },
+    ]);
   }
 
   public addSageMakerEndpoint({

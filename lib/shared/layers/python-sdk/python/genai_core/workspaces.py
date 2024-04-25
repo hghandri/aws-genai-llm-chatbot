@@ -4,6 +4,7 @@ import uuid
 import boto3
 import genai_core.embeddings
 from datetime import datetime
+from genai_core.types import Task
 from boto3.dynamodb.conditions import Key
 import genai_core.auth
 
@@ -225,7 +226,7 @@ def create_workspace_aurora(
     if not embeddings_model:
         raise genai_core.types.CommonError("Invalid embeddings model")
     # Verify that the embeddings model
-    genai_core.embeddings.generate_embeddings(embeddings_model, ["test"])
+    genai_core.embeddings.generate_embeddings(embeddings_model, ["test"], Task.STORE)
 
     item = {
         "workspace_id": workspace_id,
@@ -278,9 +279,7 @@ def create_workspace_aurora(
         ),
     )
 
-    return {
-        "id": workspace_id,
-    }
+    return item
 
 
 def create_workspace_open_search(
@@ -305,7 +304,7 @@ def create_workspace_open_search(
     if not embeddings_model:
         raise genai_core.types.CommonError("Invalid embeddings model")
     # Verify that the embeddings model
-    genai_core.embeddings.generate_embeddings(embeddings_model, ["test"])
+    genai_core.embeddings.generate_embeddings(embeddings_model, ["test"], Task.STORE)
 
     item = {
         "workspace_id": workspace_id,
@@ -347,9 +346,7 @@ def create_workspace_open_search(
 
     print(response)
 
-    return {
-        "id": workspace_id,
-    }
+    return item
 
 
 def create_workspace_kendra(
@@ -392,9 +389,7 @@ def create_workspace_kendra(
 
     print(response)
 
-    return {
-        "id": workspace_id,
-    }
+    return item
 
 
 def delete_workspace(workspace_id: str):

@@ -1,9 +1,11 @@
 import {
   BreadcrumbGroup,
   Header,
+  HelpPanel,
   Pagination,
   PropertyFilter,
   Table,
+  Link,
 } from "@cloudscape-design/components";
 import useOnFollow from "../../../common/hooks/use-on-follow";
 import BaseAppLayout from "../../../components/base-app-layout";
@@ -13,7 +15,6 @@ import { ApiClient } from "../../../common/api-client/api-client";
 import { AppContext } from "../../../common/app-context";
 import { TextHelper } from "../../../common/helpers/text-helper";
 import { PropertyFilterI18nStrings } from "../../../common/i18n/property-filter-i18n-strings";
-import { ModelItem, ResultValue } from "../../../common/types";
 import { TableEmptyState } from "../../../components/table-empty-state";
 import { TableNoMatchState } from "../../../components/table-no-match-state";
 import {
@@ -21,11 +22,13 @@ import {
   ModelsColumnFilteringProperties,
 } from "./column-definitions";
 import { CHATBOT_NAME } from "../../../common/constants";
+import { Model } from "../../../API";
+import { Utils } from "../../../common/utils";
 
 export default function Models() {
   const onFollow = useOnFollow();
   const appContext = useContext(AppContext);
-  const [models, setModels] = useState<ModelItem[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(true);
   const {
     items,
@@ -60,11 +63,13 @@ export default function Models() {
     if (!appContext) return;
 
     const apiClient = new ApiClient(appContext);
-    const result = await apiClient.models.getModels();
-    if (ResultValue.ok(result)) {
-      setModels(result.data);
-    }
+    try {
+      const result = await apiClient.models.getModels();
 
+      setModels(result.data!.listModels);
+    } catch (error) {
+      console.error(Utils.getErrorMessage(error));
+    }
     setLoading(false);
   }, [appContext]);
 
@@ -116,6 +121,25 @@ export default function Models() {
           }
           pagination={<Pagination {...paginationProps} />}
         />
+      }
+      info={
+        <HelpPanel header={<Header variant="h3">Foundation Models</Header>}>
+          <p>
+            For Amazon Bedrock we display all models available in the selected
+            AWS Region.
+          </p>
+          <p>
+            You might need to request access to the models you want to use via
+            the Amazon Bedrock{" "}
+            <Link
+              external
+              href="https://console.aws.amazon.com/bedrock/home?#/modelaccess"
+            >
+              Model access
+            </Link>{" "}
+            page
+          </p>
+        </HelpPanel>
       }
     />
   );
